@@ -14,7 +14,7 @@ from queue import PriorityQueue
 
 # read input file
 start_time = time.time()
-f = open("input6.txt", 'r+')
+f = open("input.txt", 'r+')
 search_method = f.readline().rstrip('\n') #first line: search method
 maze = [int(i) for i in f.readline().rstrip('\n').split(' ')] #second line: size of x,y,z 
 start = [int(i) for i in f.readline().rstrip('\n').split(' ')] #third line: entrance grid location
@@ -26,8 +26,7 @@ grid = [] #list of grids
 action = [] #list of actions
 for n in range(num):
     grids_list.append([int(i) for i in f.readline().rstrip('\n').split(' ')])
-    grid.append(grids_list[n][:3])
-    action.append(grids_list[n][3:])
+    
 
 #define an act function
 def act(g, a):
@@ -101,11 +100,11 @@ class Graph:
     def addEdge(self,u,v): 
         self.graph[u].append(v) 
     
-    def addCost (self,u,c):
-        self.weights[u].append(c)
+    def addCost(self,u,v,c):
+        self.graph[u].append([v,c])
     
     def getCost (self, u):
-        return self.weights[u][0]
+        return self.graph[u][0][-1]
 
 # Function of BFS method
     def BFS(self, start, end): 
@@ -113,30 +112,40 @@ class Graph:
         while queue:
             path = queue.pop(0)
             node = path[-1]
-            if node == end:
-                return path
+            
             if node not in visited:
-                for n in self.graph[node]: #check near nodes
-                    new_path = list(path)
-                    new_path.append(n)
-                    queue.append(new_path)
                 visited.add(node)
+                if node == end:
+                    return path
+                for n in self.graph[node]: #check near nodes
+                    if n not in visited:
+                        new_path = list(path)
+                        new_path.append(n)
+                        queue.append(new_path)
+                
 
 # Function of UCS method
     def UCS(self, start, end):
         visited, queue = set(), PriorityQueue()
-        queue.put((0, [start]))
+        queue.put((0, [[start, 0]]))
+        total_cost = 0
         while queue:
             cost, path = queue.get()
-            print(cost)
-            node = path[-1]   
+            node = path[-1][0]
             if node not in visited:
-                for i in self.graph[node]:
-                    total_cost = cost + self.getCost(node)
-                    queue.put((total_cost, path+[i]))
                 visited.add(node)
-            if node == end:
-                return path, total_cost
+                if node == end:
+                    return path, cost
+                for i in self.graph[node]:
+                    if i[0] not in visited:
+                        total_cost = cost + i[-1]
+                        queue.put((total_cost, path+[i]))
+
+                
+
+# Function of A* method
+    #def A(self, start, end):
+    
                         
                         
 
@@ -146,10 +155,10 @@ class Graph:
 if search_method == 'BFS':
     g = Graph()
 
-    for i in range(len(grids_list)): #get the next grid of every grid in list
-        for j in action[i]:
-            Next, cost = act(grid[i][:], j)
-            g.addEdge(tuple(grid[i]), tuple(Next))
+    for node in grids_list: #get the next grid of every grid in list
+        for a in node[3:]:
+            Next, cost = act(node[:3], a)
+            g.addEdge(tuple(node[:3]), tuple(Next))
 
     path = g.BFS(tuple(start), tuple(end))
     steps = len(path)
@@ -158,8 +167,11 @@ if search_method == 'BFS':
     f = open("output.txt", "w")
     f.write(str(total) + "\n")
     f.write(str(steps) + "\n")
+    cost = 0
     for i in path:
-        f.write(str(i) + "\n")
+        ans = ' '.join(map(str,i))
+        f.write(ans + ' ' + str(cost) + "\n")
+        cost = 1
     f.close()
 
     end_time = time.time()
@@ -168,15 +180,12 @@ if search_method == 'BFS':
 
 #UCS test command
 if search_method == 'UCS':
-    print("step1")
     g = Graph()
 
-    for i in range(len(grids_list)): #get the next grid of every grid in list
-        for j in action[i]:
-            Next, cost = act(grid[i][:],j)
-            g.addEdge(tuple(grid[i]), tuple(Next))
-            g.addCost(tuple(grid[i]), cost)
-    print("step2")
+    for node in grids_list: #get the next grid of every grid in list
+        for a in node[3:]:
+            Next, cost = act(node[:3],a )
+            g.addCost(tuple(node[:3]), tuple(Next), cost)
 
     path, total = g.UCS(tuple(start), tuple(end))
     steps = len(path)
@@ -185,7 +194,8 @@ if search_method == 'UCS':
     f.write(str(total) + "\n")
     f.write(str(steps) + "\n")
     for i in path:
-        f.write(str(i) + "\n")
+        ans = ' '.join(map(str, i[0])) + ' ' + str(i[-1]) + '\n'
+        f.write(ans)
     f.close()
     
     end_time = time.time()
