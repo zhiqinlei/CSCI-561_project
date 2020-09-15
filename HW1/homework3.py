@@ -14,7 +14,7 @@ from queue import PriorityQueue
 
 # read input file
 start_time = time.time()
-f = open("input.txt", 'r+')
+f = open("input8.txt", 'r+')
 search_method = f.readline().rstrip('\n') #first line: search method
 maze = [int(i) for i in f.readline().rstrip('\n').split(' ')] #second line: size of x,y,z 
 start = [int(i) for i in f.readline().rstrip('\n').split(' ')] #third line: entrance grid location
@@ -91,55 +91,66 @@ class Graph:
     # Constructor 
     def __init__(self): 
   
-        # default dictionary to store graph 
-        self.graph = defaultdict(list) 
+        # default dictionary to store adjacent 
+        self.adjacent = defaultdict(list) 
         # use dic to store cost
         self.weights = defaultdict(list)
   
     # function to add an edge to graph 
     def addEdge(self,u,v): 
-        self.graph[u].append(v) 
+        self.adjacent[u].append(v) 
     
     def addCost(self,u,v,c):
-        self.graph[u].append([v,c])
+        self.adjacent[u].append([v,c])
     
-    def getCost (self, u):
-        return self.graph[u][0][-1]
+    
+
+# Function to trace the path of search algrithem
+def backtrace(parent, start, end):
+    path = [end]
+    while path[-1] != start:
+        path.append(parent[path[-1]])
+    path.reverse()
+    return path
 
 # Function of BFS method
-    def BFS(self, start, end): 
-        visited, queue = set(), [[start]]
-        while queue:
-            path = queue.pop(0)
-            node = path[-1]
-            
-            if node not in visited:
-                visited.add(node)
-                if node == end:
-                    return path
-                for n in self.graph[node]: #check near nodes
-                    if n not in visited:
-                        new_path = list(path)
-                        new_path.append(n)
-                        queue.append(new_path)
+def BFS(graph, start, end): 
+    parent = {}
+    visited, queue = set(), [start]
+    while queue:
+        node = queue.pop(0)
+        if node not in visited:
+            visited.add(node)
+            if node == end:
+                path = backtrace(parent, start, end)
+                return path
+            for n in graph.adjacent[node]: #check near nodes
+                if n not in visited:
+                    parent[n] = node
+                    queue.append(n)
                 
 
 # Function of UCS method
-    def UCS(self, start, end):
-        visited, queue = set(), PriorityQueue()
-        queue.put((0, [[start, 0]]))
-        total_cost = 0
-        while queue:
-            cost, path = queue.get()
-            node = path[-1][0]
-            if node not in visited:
-                visited.add(node)
-                if node == end:
-                    return path, cost
-                for i in self.graph[node]:
-                    if i[0] not in visited:
-                        total_cost = cost + i[-1]
-                        queue.put((total_cost, path+[i]))
+def UCS(graph, start, end):
+    parent = {}
+
+    visited, queue = set(), PriorityQueue()
+    queue.put((0, start, [0]))
+    while queue:
+        cost, node, cpath= queue.get() 
+        if node not in visited:
+            visited.add(node)
+            if node == end:
+                path = backtrace(parent, start, end)
+                return path, cost, cpath
+            for i in graph.adjacent[node]:
+                if i[0] not in visited:
+                    parent[i[0]] = node
+                    new_path = list(cpath)
+                    new_path.append(i[-1])
+                    total_cost = cost + i[-1]
+                    queue.put((total_cost, i[0], new_path))
+        
 
                 
 
@@ -160,19 +171,25 @@ if search_method == 'BFS':
             Next, cost = act(node[:3], a)
             g.addEdge(tuple(node[:3]), tuple(Next))
 
-    path = g.BFS(tuple(start), tuple(end))
-    steps = len(path)
-    total = steps -1
+    path = BFS(g, tuple(start), tuple(end))
 
-    f = open("output.txt", "w")
-    f.write(str(total) + "\n")
-    f.write(str(steps) + "\n")
-    cost = 0
-    for i in path:
-        ans = ' '.join(map(str,i))
-        f.write(ans + ' ' + str(cost) + "\n")
-        cost = 1
-    f.close()
+    if path != None:
+        steps = len(path)
+        total = steps -1
+
+        f = open("output.txt", "w")
+        f.write(str(total) + "\n")
+        f.write(str(steps) + "\n")
+        cost = 0
+        for i in path:
+            ans = ' '.join(map(str,i))
+            f.write(ans + ' ' + str(cost) + "\n")
+            cost = 1
+        f.close()
+    else:
+        f = open("output.txt", "w")
+        f.write("FAIL")
+        f.close()
 
     end_time = time.time()
     print("time= ", end_time-start_time)
@@ -187,17 +204,25 @@ if search_method == 'UCS':
             Next, cost = act(node[:3],a )
             g.addCost(tuple(node[:3]), tuple(Next), cost)
 
-    path, total = g.UCS(tuple(start), tuple(end))
-    steps = len(path)
+    path, total, cpath = UCS(g, tuple(start), tuple(end))
+    end_time = time.time()
+    print("time= ", end_time-start_time)
 
-    f = open("output.txt", "w")
-    f.write(str(total) + "\n")
-    f.write(str(steps) + "\n")
-    for i in path:
-        ans = ' '.join(map(str, i[0])) + ' ' + str(i[-1]) + '\n'
-        f.write(ans)
-    f.close()
-    
+    if path != None:
+        steps = len(path)
+
+        f = open("output.txt", "w")
+        f.write(str(total) + "\n")
+        f.write(str(steps) + "\n")
+        for i in range(len(path)):
+            ans = ' '.join(map(str, path[i])) + ' ' + str(cpath[i]) + '\n'
+            f.write(ans)
+        f.close()
+    else:
+        f = open("output.txt", "w")
+        f.write("FAIL")
+        f.close()
+
     end_time = time.time()
     print("time= ", end_time-start_time)
 
