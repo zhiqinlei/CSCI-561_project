@@ -14,7 +14,7 @@ from queue import PriorityQueue
 
 # read input file
 start_time = time.time()
-f = open("input8.txt", 'r+')
+f = open("input.txt", 'r+')
 search_method = f.readline().rstrip('\n') #first line: search method
 maze = [int(i) for i in f.readline().rstrip('\n').split(' ')] #second line: size of x,y,z 
 start = [int(i) for i in f.readline().rstrip('\n').split(' ')] #third line: entrance grid location
@@ -133,7 +133,6 @@ def BFS(graph, start, end):
 # Function of UCS method
 def UCS(graph, start, end):
     parent = {}
-
     visited, queue = set(), PriorityQueue()
     queue.put((0, start, [0]))
     while queue:
@@ -150,6 +149,35 @@ def UCS(graph, start, end):
                     new_path.append(i[-1])
                     total_cost = cost + i[-1]
                     queue.put((total_cost, i[0], new_path))
+
+def heuristic(a, b):
+    (x1, y1, z1) = a
+    (x2, y2, z2) = b
+    return math.sqrt((x2-x1)**2+(y2-y1)**2+(z2-z1)**2)
+
+def A(graph, start, end):
+    queue = PriorityQueue()
+    queue.put(start, 0)
+    parent = {}
+    cost = {}
+    cost[start] = 0
+
+    cpath = {}
+    cpath[start] = 0
+    while queue:
+        node = queue.get()
+        if node == end:
+            path = backtrace(parent, start, end)
+            return (path, cost[end], cpath)
+        for i in graph.adjacent[node]:
+            newcost = cost[node] + i[-1]
+            if i[0] not in cost or newcost < cost[i[0]]:
+                cost[i[0]] = newcost
+                total_cost = newcost + heuristic(i[0], end)
+                parent[i[0]] = node
+                cpath[i[0]] = i[-1]
+                queue.put(i[0], total_cost)
+
         
 
                 
@@ -226,6 +254,31 @@ if search_method == 'UCS':
     end_time = time.time()
     print("time= ", end_time-start_time)
 
-    
+# A* test command   
+if search_method == 'A*':
+    g = Graph()
 
+    for node in grids_list: #get the next grid of every grid in list
+        for a in node[3:]:
+            Next, cost = act(node[:3],a )
+            g.addCost(tuple(node[:3]), tuple(Next), cost)
+    
+    path, total, cpath = A(g, tuple(start), tuple(end))
+
+    if path != None:
+        steps = len(path)
+        f = open("output.txt", "w")
+        f.write(str(total) + "\n")
+        f.write(str(steps) + "\n")
+        for i in path:
+            ans = ' '.join(map(str, i)) + ' ' + str(cpath[i]) + '\n'
+            f.write(ans)
+        f.close()
+    else:
+        f = open("output.txt", "w")
+        f.write("FAIL")
+        f.close()
+
+    end_time = time.time()
+    print("time= ", end_time-start_time)
 
