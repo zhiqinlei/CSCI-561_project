@@ -14,7 +14,7 @@ from queue import PriorityQueue
 
 # read input file
 start_time = time.time()
-f = open("input.txt", 'r+')
+f = open("input6.txt", 'r+')
 search_method = f.readline().rstrip('\n') #first line: search method
 maze = [int(i) for i in f.readline().rstrip('\n').split(' ')] #second line: size of x,y,z 
 start = [int(i) for i in f.readline().rstrip('\n').split(' ')] #third line: entrance grid location
@@ -153,7 +153,7 @@ def UCS(graph, start, end):
 def heuristic(a, b):
     (x1, y1, z1) = a
     (x2, y2, z2) = b
-    return math.sqrt((x2-x1)**2+(y2-y1)**2+(z2-z1)**2)
+    return (math.sqrt((x2-x1)**2+(y2-y1)**2+(z2-z1)**2))*10
 
 def A(graph, start, end):
     queue = PriorityQueue()
