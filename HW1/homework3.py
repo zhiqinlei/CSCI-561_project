@@ -158,31 +158,43 @@ def UCS(graph, start, end): # similar to BFS except weighted edge
 def heuristic(a, b): # find the direct distance from a to b, since each step costs 10, times result 10.             
     (x1, y1, z1) = a
     (x2, y2, z2) = b
-    return (math.sqrt((x2-x1)**2+(y2-y1)**2+(z2-z1)**2))*10
+    return math.sqrt((x2-x1)**2+(y2-y1)**2+(z2-z1)**2)*10
 
 # Function of A* method
-def A(graph, start, end):   # similar to UCS except heuristic funciton
-    queue = PriorityQueue()
-    queue.put(start, 0)
+def A(graph, start, end): # similar to BFS except weighted edge           
     parent = {}
-    cost = {}                              
-    cost[start] = 0                         # use cost to record total cost   
+    visited = set()
+    queue = PriorityQueue()                 # use priority queue to always pop least cost grid
+    queue.put((0, start))                   # put total cost, start grid in to queue
+    cost = {}
+    cost[start] = 0
     cpath = {}
-    cpath[start] = 0                        # use cpath to record step cost
+    cpath[start] = 0
     while queue:
-        grid = queue.get()
-        if grid == end:
-            path = backtrace(parent, start, end)
-            return (path, cost[end], cpath)
-        for i in graph.adjacent[grid]:      # i: [(grid), cost]
-            newcost = cost[grid] + i[-1]
-            if i[0] not in cost or newcost < cost[i[0]]:
-                cost[i[0]] = newcost        # total cost = past cost + future cost
-                total_cost = newcost + heuristic(i[0], end)    
-                parent[i[0]] = grid
-                cpath[i[0]] = i[-1]
-                queue.put(i[0], total_cost)
-                        
+        c, grid = queue.get()      
+        if grid not in visited:
+            visited.add(grid)
+            if grid == end:
+                path = backtrace(parent, start, end)
+                return path, cost[end], cpath
+            for i in graph.adjacent[grid]:
+                newcost = cost[grid] + i[-1] # use newcost to record actual cost
+                if i[0] not in visited :
+                    cpath[i[0]] = i[-1]
+
+                    parent[i[0]] = grid
+                    
+                    if i[0] not in cost or newcost < cost[i[0]]:
+                        cost[i[0]] = newcost
+                    else:
+                        cost[i[0]] = cost[i[0]]
+
+                    total_cost = cost[i[0]] + heuristic(i[0], end) # total cost = actual cost + future cost
+
+                    queue.put((total_cost, i[0]))
+                    
+
+
                         
 # Main: run algorithm and output 
 
@@ -206,10 +218,11 @@ if search_method == 'BFS':
         f.write(str(total) + "\n")
         f.write(str(steps) + "\n")
         cost = 0
-        for i in path:                      # ans example: '1 3 1 1\n' first three represent grid, last represent step cost
+        for i in path[:-1]:                      # ans example: '1 3 1 1\n' first three represent grid, last represent step cost
             ans = ' '.join(map(str,i))
             f.write(ans + ' ' + str(cost) + "\n")
             cost = 1
+        f.write(' '.join(map(str, path[-1])) + ' ' + str(cost)) # the last line do not contain '\n'
         f.close()
     else:
         f = open("output.txt", "w")
@@ -238,9 +251,10 @@ if search_method == 'UCS':
         f = open("output.txt", "w")
         f.write(str(total) + "\n")
         f.write(str(steps) + "\n")
-        for i in range(len(path)):
+        for i in range(len(path)-1):
             ans = ' '.join(map(str, path[i])) + ' ' + str(cpath[i]) + '\n'
             f.write(ans)
+        f.write(' '.join(map(str, path[-1])) + ' ' + str(cpath[-1]))
         f.close()
     else:
         f = open("output.txt", "w")
@@ -267,9 +281,10 @@ if search_method == 'A*':                   # same to UCS, except run A* algorit
         f = open("output.txt", "w")
         f.write(str(total) + "\n")
         f.write(str(steps) + "\n")
-        for i in path:
+        for i in path[:-1]:
             ans = ' '.join(map(str, i)) + ' ' + str(cpath[i]) + '\n'
             f.write(ans)
+        f.write(' '.join(map(str, path[-1])) + ' ' + str(cpath[path[-1]]))
         f.close()
     else:
         f = open("output.txt", "w")
