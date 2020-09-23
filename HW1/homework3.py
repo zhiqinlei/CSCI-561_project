@@ -138,21 +138,23 @@ def UCS(graph, start, end): # similar to BFS except weighted edge
     parent = {}
     visited = set()
     queue = PriorityQueue()                 # use priority queue to always pop least cost grid
-    queue.put((0, start, [0]))              # put total cost, start grid and cost each step in to queue
+    queue.put((0, start))              # put total cost, start grid and cost each step in to queue
+    cpath = {}
+    cpath[start] = 0
     while queue:
-        cost, grid, cpath= queue.get()      # use cpath to record every step cost in the path
+        cost, grid = queue.get()      # use cpath to record every step cost in the path
         if grid not in visited:
             visited.add(grid)
             if grid == end:
                 path = backtrace(parent, start, end)
+                
                 return path, cost, cpath
             for i in graph.adjacent[grid]:
                 if i[0] not in visited:
                     parent[i[0]] = grid
-                    new_path = list(cpath)  # use new_path as a temple list of cpath
-                    new_path.append(i[-1])  # update step cost and total cost 
+                    cpath[i[0]] = i[-1]
                     total_cost = cost + i[-1]
-                    queue.put((total_cost, i[0], new_path))
+                    queue.put((total_cost, i[0]))
 
 # Heuristic function for calculating future cost
 def heuristic(a, b): # find the direct distance from a to b, since each step costs 10, times result 10.             
@@ -178,16 +180,16 @@ def A(graph, start, end): # similar to BFS except weighted edge
                 path = backtrace(parent, start, end)
                 return path, cost[end], cpath
             for i in graph.adjacent[grid]:
-                newcost = cost[grid] + i[-1] # use newcost to record actual cost
+                
                 if i[0] not in visited :
+                    newcost = cost[grid] + i[-1] # use newcost to record actual cost
+
                     cpath[i[0]] = i[-1]
 
                     parent[i[0]] = grid
                     
-                    if i[0] not in cost or newcost < cost[i[0]]:
-                        cost[i[0]] = newcost
-                    else:
-                        cost[i[0]] = cost[i[0]]
+                    cost[i[0]] = newcost
+                    
 
                     total_cost = cost[i[0]] + heuristic(i[0], end) # total cost = actual cost + future cost
 
@@ -245,16 +247,15 @@ if search_method == 'UCS':
 
     path, total, cpath = UCS(g, tuple(start), tuple(end))
 
-    if path != None:                        # same as BFS except print total steps 
+    if path != None:
         steps = len(path)
-
         f = open("output.txt", "w")
         f.write(str(total) + "\n")
         f.write(str(steps) + "\n")
-        for i in range(len(path)-1):
-            ans = ' '.join(map(str, path[i])) + ' ' + str(cpath[i]) + '\n'
+        for i in path[:-1]:
+            ans = ' '.join(map(str, i)) + ' ' + str(cpath[i]) + '\n'
             f.write(ans)
-        f.write(' '.join(map(str, path[-1])) + ' ' + str(cpath[-1]))
+        f.write(' '.join(map(str, path[-1])) + ' ' + str(cpath[path[-1]]))
         f.close()
     else:
         f = open("output.txt", "w")
