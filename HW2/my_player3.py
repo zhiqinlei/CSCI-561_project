@@ -35,6 +35,9 @@ for i in range(5):
     for j in range(5):
         GO.append((i,j))
 
+BLACK = 0
+WHITE = 0
+
 def p(piece):
     return piece[0],piece[1]
 
@@ -107,15 +110,24 @@ def all_ally(piece, board, player):
 
 def check_liberty(piece, board, player):
     all_allies = all_ally(piece, board, player)
+    liberty_num = 0
 
     for a in all_allies:
         neighbors = neighbor(a)
         for p in neighbors:
-            position = position(p,board)
-            if position != 1 and position != 2:
-                return True
-    return False
+            positions = position(p,board)
+            if positions != 1 and positions != 2:
+                liberty_num += 1
+    return liberty_num
 
+def dead_num(player, board):
+    dead_num = 0
+    for piece in GO:
+        p = position(piece, board)
+        if p == player:
+            if check_liberty(piece, board, player) == 0:
+                dead_num += 1
+    return dead_num
 
 def place(piece, board, player):
     opponent = 3-player
@@ -126,9 +138,9 @@ def place(piece, board, player):
     dead_num = 0
 
     for p in GO:
-        position = position(p, board)
-        if position == opponent:
-            if check_liberty(p, board, player) == False:
+        positions = position(p, board)
+        if positions == opponent:
+            if check_liberty(p, board, player) == 0:
                 dead_pieces.add(p)
                 dead_num += 1
 
@@ -139,3 +151,158 @@ def place(piece, board, player):
             next_board = change_board(i, after_board, 0)
         return next_board, dead_num, after_board
     
+def valid_move(player, previous, current):
+    valid_moves = []
+
+    for piece in GO:
+        if position(piece, current) == 0:
+            board_copy = deepcopy(current)
+            after, dead_pieces, _ = place(piece, board_copy, player)
+            if check_liberty(piece, after, player) > 0 and after != current and after != previous:
+                valid_moves.append((piece, dead_pieces))
+    
+    return valid_moves
+
+def evaluate(player, board, dead_black, dead_white):
+    black_piece = 0
+    white_piece = 0
+    endangered_black = 0 
+    endangered_white = 0
+    for piece in GO:
+        if position(piece, board) == 1:
+            black_piece += 1
+
+            liberty_num = check_liberty(piece, board, player)
+            if liberty_num <= 1:
+                endangered_black += 1
+            
+        if position(piece, board) == 2:
+            white_piece += 1
+
+            liberty_num = check_liberty(piece, board, player)
+            if liberty_num <= 1:
+                endangered_white += 1
+    
+    white_piece += 2.5
+
+    if player == 1:
+        value = black_piece - white_piece + endangered_white - endangered_black + dead_white*10 - dead_black*16
+    if player == 2:
+        value = white_piece - black_piece + endangered_black - endangered_white + dead_black*10 - dead_white*16
+    
+    return value
+
+def MAX(board, previous, player, depth, alpha, beta, no_dead_board):
+    global BLACK
+    global WHITE
+    opponent = 3 - player
+
+    if player == 1:
+        dead_black = dead_num(player, no_dead_board)
+        BLACK = BLACK + dead_black
+    
+    if player == 2:
+        dead_white = dead_num(player, no_dead_board)
+        WHITE = WHITE + dead_white
+
+    if depth == 0:
+        value = evaluate(player, board, BLACK, WHITE)
+        if player == 1:
+            BLACK = BLACK - dead_num(player, no_dead_board)
+        if player == 2:
+            WHITE = WHITE - dead_num(player, no_dead_board)
+        return value, []
+    
+    max_score = -9999
+    best_actions = []
+    valid_moves = valid_move(player, previous, board)
+
+    if len(valid_moves) == 25:
+        return 100, [(2,2)]
+    for move in valid_moves:
+        board_copy = deepcopy(board)
+        next_board, dead_pieces, no_dead_board = place(move[0], board_copy, player)
+        score, actions = MIN(next_board, board, opponent, depth -1, alpha, beta, no_dead_board)
+
+        if score > max_score:
+            max_score = score
+            best_actions = [move] + actions
+
+        if max_score > beta:
+            return max_score, best_actions
+        
+        if max_score > alpha:
+            alpha = max_score
+    
+    return max_score, best_actions
+
+def MIN(board, previous, player, depth, alpha, beta, no_dead_board):
+    global BLACK
+    global WHITE
+    opponent = 3 - player
+
+    if player == 1:
+        dead_black = dead_num(player, no_dead_board)
+        BLACK = BLACK + dead_black
+    
+    if player == 2:
+        dead_white = dead_num(player, no_dead_board)
+        WHITE = WHITE + dead_white
+
+    if depth == 0:
+        value = evaluate(board, player, BLACK, WHITE)
+        if player == 1:
+            BLACK = BLACK - dead_num(player, no_dead_board)
+        if player == 2:
+            WHITE = WHITE - dead_num(player, no_dead_board)
+        return value, []
+
+    min_score = 9999
+    worst_actions = []
+    valid_moves = valid_move(player, previous, board)
+
+    for move in valid_moves:
+        board_copy = deepcopy(board)
+        next_board, dead_pieces, no_dead_board = place(move[0], board_copy, player)
+        score, actions = MAX(next_board, board, opponent, depth-1, alpha, beta, no_dead_board)
+
+        if score < min_score:
+            min_score = score
+            worst_actions = [move] + actions
+
+        if min_score < alpha:
+            return min_score, worst_actions
+        
+        if min_score < beta:
+            alpha = min_score # very important, remember double check
+
+    return min_score, worst_actions
+
+
+
+def minmax(player, board, previous):
+    depth = 4
+
+    score, actions = MAX(board, previous, player, depth, -9999, 9999, board)
+
+    if actions == []:
+        return "PASS"
+    else:
+        return actions[0]
+
+
+result = minmax(player, current_board, previous_board)    
+
+ans = ""
+if result != "PASS":
+    f = open("output.txt", "w")
+    ans += str(result[0]) + ',' + str(result[1])
+    f.write(ans)
+    f.close
+
+if result == "PASS":
+    f = open("output.txt", "w")
+    ans = "PASS"
+    f.write(ans)
+    f.close
+
