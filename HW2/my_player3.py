@@ -5,10 +5,13 @@
 import sys
 import random
 import timeit
+import time
 import math
 import argparse
 from collections import Counter
 from copy import deepcopy
+
+start_time = time.time() # record the time cost
 
 # read the input file
 f = open("input.txt", 'r+')
@@ -51,6 +54,7 @@ def change_board(piece, board, typ):
 def neighbor(piece):
     # detect neighbbots of piece in i,j position
     # i: row number, j: column number
+
     i,j = p(piece)
     neighbors = []
     if i == 0:
@@ -89,9 +93,11 @@ def neighbor(piece):
         if j == 4: 
             neighbors.append((i-1, j))
             neighbors.append((i, j-1))
+    
     return neighbors
 
 def all_ally(piece, board, player):
+
     queue = [piece]
     visited = set()
     all_allies = []
@@ -102,8 +108,8 @@ def all_ally(piece, board, player):
             all_allies.append(member)
             neighbors = neighbor(member)
             for p in neighbors:
-                if position(p, board) != player:
-                    neighbors.remove(p)
+                #if position(p, board) != player:
+                    #neighbors.remove(p)
                 if position(p, board) == player and p not in visited and p not in queue:
                     queue.append(p)
     return all_allies
@@ -116,7 +122,7 @@ def check_liberty(piece, board, player):
         neighbors = neighbor(a)
         for p in neighbors:
             positions = position(p,board)
-            if positions != 1 and positions != 2:
+            if positions == 0:
                 liberty_num += 1
     return liberty_num
 
@@ -138,9 +144,9 @@ def place(piece, board, player):
     dead_num = 0
 
     for p in GO:
-        positions = position(p, board)
+        positions = position(p, after_board)
         if positions == opponent:
-            if check_liberty(p, board, player) == 0:
+            if check_liberty(p, after_board, opponent) == 0:
                 dead_pieces.add(p)
                 dead_num += 1
 
@@ -153,6 +159,53 @@ def place(piece, board, player):
     
 def valid_move(player, previous, current):
     valid_moves = []
+    moves = []
+    liberty = set()
+
+    for p in GO:
+        if position(p, current) == player:
+            end = set()
+            ally = all_ally(p, current, player)
+            for m in ally:
+                n = neighbor(m)
+                for i in n:
+                    if position(i, current) == 0:
+                        end.add(i)
+            
+            if len(end) ==1:
+                liberty = liberty|end
+                
+                i,j = p[0], p[1]
+                if i==0 or i == 4 or j==0 or j==4:
+                    safe = set()
+                    e = list(end)  
+                    nn = neighbor(e[0])
+                    for k in nn:
+                        if position(k, current) == 0:
+                            safe.add(k)
+                            if safe:
+                                liberty = liberty|safe
+        
+        elif position(p, current) == 3- player:
+            op = set() 
+            opp = all_ally(p, current, 3-player)
+            for o in opp:
+                oo = neighbor(o)
+                for i in oo:
+                    if position(i, current) == 0:
+                        op.add(i)
+            liberty = liberty|op
+        
+    if len(liberty):
+        for x in list(liberty):
+            board_copy = deepcopy(current)
+            after, dead_pieces, _ = place(x, board_copy, player)
+            if check_liberty(x, after, player) > 0 and after != current and after != previous:
+
+                moves.append((x, dead_pieces))
+        if len(moves) != 0:
+            
+            return moves
 
     for piece in GO:
         if position(piece, current) == 0:
@@ -216,9 +269,10 @@ def MAX(board, previous, player, depth, alpha, beta, no_dead_board):
     max_score = -9999
     best_actions = []
     valid_moves = valid_move(player, previous, board)
+    
 
     if len(valid_moves) == 25:
-        return 100, [(2,2)]
+        return 100, [((2,2),0)]
     for move in valid_moves:
         board_copy = deepcopy(board)
         next_board, dead_pieces, no_dead_board = place(move[0], board_copy, player)
@@ -284,19 +338,26 @@ def minmax(player, board, previous):
     depth = 4
 
     score, actions = MAX(board, previous, player, depth, -9999, 9999, board)
+    print(actions)
 
     if actions == []:
         return "PASS"
     else:
-        return actions[0]
+        return actions[0][0]
 
 
-result = minmax(player, current_board, previous_board)    
+result = minmax(player, current_board, previous_board) 
+print(result)
 
 ans = ""
+
+end_time = time.time()
+print("time= ", end_time-start_time)
+
 if result != "PASS":
     f = open("output.txt", "w")
     ans += str(result[0]) + ',' + str(result[1])
+    print(ans)
     f.write(ans)
     f.close
 
