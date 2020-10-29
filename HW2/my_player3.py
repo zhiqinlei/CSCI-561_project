@@ -38,9 +38,6 @@ for i in range(5):
     for j in range(5):
         GO.append((i,j))
 
-BLACK = 0
-WHITE = 0
-
 def p(piece):
     return piece[0],piece[1]
 
@@ -50,6 +47,22 @@ def position(piece, board):
 def change_board(piece, board, typ):
     board[piece[0]][piece[1]] = typ
     return board
+
+steps = ['0']
+
+if previous_board == [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]:
+    F = open("steps.txt", "w")
+    F.write('0')
+    F.close
+else:
+    F = open("steps.txt", "r+")
+    steps = F.readlines()
+    
+    
+next_steps = str(int(steps[0]) + 1)
+F = open("steps.txt", "w")
+F.write(next_steps)
+F.close
 
 def neighbor(piece):
     # detect neighbbots of piece in i,j position
@@ -108,8 +121,6 @@ def all_ally(piece, board, player):
             all_allies.append(member)
             neighbors = neighbor(member)
             for p in neighbors:
-                #if position(p, board) != player:
-                    #neighbors.remove(p)
                 if position(p, board) == player and p not in visited and p not in queue:
                     queue.append(p)
     return all_allies
@@ -141,25 +152,23 @@ def place(piece, board, player):
     change_board(piece, after_board, player)
 
     dead_pieces = set()
-    dead_num = 0
 
     for p in GO:
         positions = position(p, after_board)
         if positions == opponent:
             if check_liberty(p, after_board, opponent) == 0:
                 dead_pieces.add(p)
-                dead_num += 1
-
+               
     if dead_num == 0:
-        return after_board, dead_num, after_board
+        return after_board
     else:
         for i in list(dead_pieces):
-            next_board = change_board(i, after_board, 0)
-        return next_board, dead_num, after_board
+            after_board = change_board(i, after_board, 0)
+        return after_board
     
 def valid_move(player, previous, current):
-    valid_moves = []
     moves = []
+    valid_moves = []
     liberty = set()
 
     for p in GO:
@@ -196,32 +205,33 @@ def valid_move(player, previous, current):
                         op.add(i)
             liberty = liberty|op
         
+        elif position(p, current) == 0:
+            board_copy = deepcopy(current)
+            after = place(p, board_copy, player)
+            if check_liberty(p, after, player) > 0 and after != current and after != previous:
+                valid_moves.append(p)
+        
     if len(liberty):
         for x in list(liberty):
             board_copy = deepcopy(current)
-            after, dead_pieces, _ = place(x, board_copy, player)
+            after = place(x, board_copy, player)
             if check_liberty(x, after, player) > 0 and after != current and after != previous:
 
-                moves.append((x, dead_pieces))
+                moves.append(x)
         if len(moves) != 0:
             
             return moves
 
-    for piece in GO:
-        if position(piece, current) == 0:
-            board_copy = deepcopy(current)
-            after, dead_pieces, _ = place(piece, board_copy, player)
-            if check_liberty(piece, after, player) > 0 and after != current and after != previous:
-                valid_moves.append((piece, dead_pieces))
-    
     return valid_moves
 
-def evaluate(player, board, dead_black, dead_white):
+def evaluate(player, board):
     black_piece = 0
     white_piece = 0
     endangered_black = 0 
     endangered_white = 0
+
     for piece in GO:
+        
         if position(piece, board) == 1:
             black_piece += 1
 
@@ -239,31 +249,17 @@ def evaluate(player, board, dead_black, dead_white):
     white_piece += 2.5
 
     if player == 1:
-        value = black_piece - white_piece + endangered_white - endangered_black + dead_white*10 - dead_black*16
+        value = black_piece - white_piece + endangered_white *0.5 - endangered_black *0.5
     if player == 2:
-        value = white_piece - black_piece + endangered_black - endangered_white + dead_black*10 - dead_white*16
-    
+        value = white_piece - black_piece + endangered_black *0.5 - endangered_white *0.5
     return value
 
-def MAX(board, previous, player, depth, alpha, beta, no_dead_board):
-    global BLACK
-    global WHITE
+def MAX(board, previous, player, depth, alpha, beta):
+
     opponent = 3 - player
 
-    if player == 1:
-        dead_black = dead_num(player, no_dead_board)
-        BLACK = BLACK + dead_black
-    
-    if player == 2:
-        dead_white = dead_num(player, no_dead_board)
-        WHITE = WHITE + dead_white
-
     if depth == 0:
-        value = evaluate(player, board, BLACK, WHITE)
-        if player == 1:
-            BLACK = BLACK - dead_num(player, no_dead_board)
-        if player == 2:
-            WHITE = WHITE - dead_num(player, no_dead_board)
+        value = evaluate(player, board)
         return value, []
     
     max_score = -9999
@@ -271,16 +267,17 @@ def MAX(board, previous, player, depth, alpha, beta, no_dead_board):
     valid_moves = valid_move(player, previous, board)
     
 
-    if len(valid_moves) == 25:
-        return 100, [((2,2),0)]
+    if board == [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]:
+        return 100, [(2,2)]
+
     for move in valid_moves:
         board_copy = deepcopy(board)
-        next_board, dead_pieces, no_dead_board = place(move[0], board_copy, player)
-        score, actions = MIN(next_board, board, opponent, depth -1, alpha, beta, no_dead_board)
+        next_board = place(move, board_copy, player)
+        score, actions = MIN(next_board, board, opponent, depth -1, alpha, beta)
 
         if score > max_score:
             max_score = score
-            best_actions = [move] + actions
+            best_actions = [move] 
 
         if max_score > beta:
             return max_score, best_actions
@@ -290,25 +287,12 @@ def MAX(board, previous, player, depth, alpha, beta, no_dead_board):
     
     return max_score, best_actions
 
-def MIN(board, previous, player, depth, alpha, beta, no_dead_board):
-    global BLACK
-    global WHITE
+def MIN(board, previous, player, depth, alpha, beta):
+   
     opponent = 3 - player
 
-    if player == 1:
-        dead_black = dead_num(player, no_dead_board)
-        BLACK = BLACK + dead_black
-    
-    if player == 2:
-        dead_white = dead_num(player, no_dead_board)
-        WHITE = WHITE + dead_white
-
     if depth == 0:
-        value = evaluate(board, player, BLACK, WHITE)
-        if player == 1:
-            BLACK = BLACK - dead_num(player, no_dead_board)
-        if player == 2:
-            WHITE = WHITE - dead_num(player, no_dead_board)
+        value = evaluate(player, board)
         return value, []
 
     min_score = 9999
@@ -317,37 +301,52 @@ def MIN(board, previous, player, depth, alpha, beta, no_dead_board):
 
     for move in valid_moves:
         board_copy = deepcopy(board)
-        next_board, dead_pieces, no_dead_board = place(move[0], board_copy, player)
-        score, actions = MAX(next_board, board, opponent, depth-1, alpha, beta, no_dead_board)
+        next_board = place(move, board_copy, player)
+        score, actions = MAX(next_board, board, opponent, depth-1, alpha, beta)
 
         if score < min_score:
             min_score = score
-            worst_actions = [move] + actions
+            worst_actions = [move] 
 
         if min_score < alpha:
             return min_score, worst_actions
         
         if min_score < beta:
-            alpha = min_score # very important, remember double check
+            beta = min_score
 
     return min_score, worst_actions
 
 
 
 def minmax(player, board, previous):
-    depth = 4
+    global steps
+    
+    num = int(steps[0])
+    
+    depth = 1
+    
+    
+    if player == 1 and num == 11:
+        depth =2
+    
+    if player == 2 and num == 11:
+        depth =1
+    
+   
+    print('num: ' , num)
+    print('depth: ', depth)
 
-    score, actions = MAX(board, previous, player, depth, -9999, 9999, board)
-    print(actions)
+    score, actions = MAX(board, previous, player, depth, -9999, 9999)
+    
 
     if actions == []:
         return "PASS"
     else:
-        return actions[0][0]
+        return actions[0]
 
 
 result = minmax(player, current_board, previous_board) 
-print(result)
+
 
 ans = ""
 
@@ -357,7 +356,6 @@ print("time= ", end_time-start_time)
 if result != "PASS":
     f = open("output.txt", "w")
     ans += str(result[0]) + ',' + str(result[1])
-    print(ans)
     f.write(ans)
     f.close
 
