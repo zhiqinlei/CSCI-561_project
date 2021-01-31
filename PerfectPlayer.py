@@ -1,10 +1,3 @@
-# uncompyle6 version 3.7.4
-# Python bytecode 3.6 (3379)
-# Decompiled from: Python 3.8.2 (default, Jul 16 2020, 14:00:26) 
-# [GCC 9.3.0]
-# Embedded file name: /Users/bo/Documents/projects/561/TA Spring 2020/QL-Example-For-TicTacToe/PerfectPlayer.py
-# Compiled at: 2020-01-30 16:30:12
-# Size of source mod 2**32: 2556 bytes
 from Board import Board
 WIN_REWARD = 1.0
 DRAW_REWARD = 0.0
@@ -94,4 +87,4 @@ class PerfectPlayer:
 
             return (
              max_value, action)
-# okay decompiling PerfectPlayer.pyc
+
